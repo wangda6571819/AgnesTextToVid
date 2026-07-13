@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agnes Studio · 视频生成</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #060b16;
+        --panel: rgba(11, 18, 32, 0.9);
+        --panel-2: rgba(18, 27, 46, 0.92);
+        --border: rgba(148, 163, 184, 0.2);
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
+        --accent-2: #818cf8;
+        --success: #34d399;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top left, #1e3a8a 0%, #060b16 45%, #020617 100%);
+        color: var(--text);
+        min-height: 100vh;
+      }
+      .wrap { max-width: 1320px; margin: 0 auto; padding: 28px; }
+      .hero { padding: 28px; border: 1px solid var(--border); background: linear-gradient(135deg, rgba(14, 24, 42, 0.96), rgba(8, 15, 28, 0.95)); border-radius: 24px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38); }
+      .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
+      .brand { font-size: 28px; font-weight: 700; }
+      .tag { display: inline-flex; padding: 6px 12px; border-radius: 999px; font-size: 12px; color: #bfdbfe; background: rgba(56, 189, 248, 0.16); border: 1px solid rgba(56, 189, 248, 0.25); }
+      p { color: var(--muted); line-height: 1.7; }
+      .grid { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; }
+      .card { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 18px; }
+      label { display: inline-block; margin-top: 10px; margin-bottom: 6px; font-weight: 600; }
+      textarea, input, select { width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: rgba(15, 23, 42, 0.86); color: var(--text); font-size: 14px; margin-top: 6px; }
+      textarea { min-height: 126px; resize: vertical; }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+      button {
+        padding: 10px 16px; border: none; border-radius: 999px; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%); color: white; cursor: pointer; font-weight: 700; box-shadow: 0 10px 24px rgba(56, 189, 248, 0.22);
+      }
+      button.secondary { background: rgba(15, 23, 42, 0.95); color: #dbeafe; border: 1px solid var(--border); box-shadow: none; }
+      button:disabled { opacity: .72; cursor: wait; }
+      .status { margin-top: 12px; color: var(--muted); min-height: 24px; }
+      .result-box { margin-top: 14px; padding: 12px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--border); }
+      .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: rgba(52, 211, 153, 0.16); color: #a7f3d0; margin-right: 8px; margin-bottom: 8px; font-size: 12px; }
+      .progress { height: 10px; background: rgba(148, 163, 184, 0.18); border-radius: 999px; overflow: hidden; margin-top: 10px; }
+      .progress > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 0.3s ease; }
+      video { width: 100%; border-radius: 14px; margin-top: 10px; background: #000; }
+      .small { font-size: 12px; color: var(--muted); }
+      .history-item { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
+      .history-item:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+      .download-link { display: inline-block; margin-top: 8px; color: #bae6fd; text-decoration: none; }
+      .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+      .thumbs img { width: 88px; height: 88px; object-fit: cover; border-radius: 12px; border: 2px solid var(--border); cursor: pointer; transition: border-color .2s, box-shadow .2s; }
+      .thumbs img.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35); }
+      .notice { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); color: #bae6fd; font-size: 13px; line-height: 1.6; }
+      .muted { color: var(--muted); }
+      .param-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+      .param-grid .full { grid-column: 1 / -1; }
+      details.params { margin-top: 14px; border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; background: rgba(15, 23, 42, 0.45); }
+      details.params summary { cursor: pointer; font-weight: 700; color: #dbeafe; }
+      .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+      .samples-section { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--border); }
+      .samples-header { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+      .samples-header h2 { margin: 0; font-size: 22px; }
+      .samples-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .sample-card { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 14px; }
+      .sample-card h4 { margin: 8px 0 4px; font-size: 15px; }
+      .sample-card video { margin-top: 8px; aspect-ratio: 16 / 10; object-fit: cover; }
+      @media (max-width: 920px) { .grid { grid-template-columns: 1fr; } .param-grid { grid-template-columns: 1fr; } .samples-grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="hero">
+        <div class="topbar">
+          <div>
+            <div class="brand">Agnes Studio</div>
+            <p style="margin: 6px 0 0;">从文本、图片到关键帧，一站式生成视频内容。</p>
+          </div>
+          <div class="tag">本地版工作流</div>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <label for="prompt">视频描述</label>
+            <textarea id="prompt" placeholder="例如：一只橙色的猫在海边奔跑，夕阳下的浪花，电影感，镜头缓慢推进">整体参数:10s,4K60帧，16:9横屏，AI电影级运镜系统驱动。写实暗黑国风仙侠;史诗级光影，物理级粒子灵光特效，真实布料动力学，动态能量气场，冷暗史诗色调，玄幻压迫氛围感*浅景深*极致面部与服饰细节，严格沿用参考图黑衣银饰广袖古风女子形象
+00:00-00:03(3s运镜:AI电影级航拍俯冲推镜，大景深全景缓慢下沉式推进，低角度仰拍，16:9稳定横向构图
+画面:荒芜云雾悬崖之巅，空间虚无中进发细碎银蓝灵光粒子，万千光点流动缠绕、层层汇聚，从模糊光影逐步勾勒出人体轮廓，粒子明暗跟随运镜光影变化，史诗级开场氛围感
+00:03-00:06(3s)
+运镜:AI电影级环绕跟拍，镜头以人物为圆心平滑弧形环绕侧逆光轮廓光精准跟焦;运镜丝滑无抖动
+画面:灵光彻底凝聚成型，完整呈现参考图黑衣银饰广袖古风女子，银饰流苏、黑色纱质长袍、精致发型同步显现，灵光缓缓消散，女子缓缓睁眼，眼神清冷疏离，气场压迫感拉满
+00:06-00:10(4s)
+运镜:AI电影级后拉仰拍+轻微摇镜，升级慢镜头，镜头同步跟随法术能量爆发轨迹，动态张力运镜
+画面:女子抬手结印施展法术；深渊法术能量，周身环绕流光符文与狂暴粒子气场，黑袍广袖被法术劲风剧烈翻飞，长发肆意飘散，能量向天地间扩散，大电影级</textarea>
+
+            <label for="mode">生成模式</label>
+            <select id="mode">
+              <option value="text">文本生成</option>
+              <option value="image">图片转视频</option>
+              <option value="keyframes">关键帧生成动画</option>
+            </select>
+
+            <details class="params" open>
+              <summary>视频参数（Agnes Video V2.0）</summary>
+              <div class="param-grid">
+                <div>
+                  <label for="resolutionPreset">分辨率 / 宽高比</label>
+                  <select id="resolutionPreset">
+                    <option value="16:9-720p" selected>16:9 横屏 · 720p（1152×768）</option>
+                    <option value="9:16-720p">9:16 竖屏 · 720p（768×1152）</option>
+                    <option value="1:1-720p">1:1 方形 · 720p（768×768）</option>
+                    <option value="4:3-720p">4:3 横屏 · 720p（1024×768）</option>
+                    <option value="3:4-720p">3:4 竖屏 · 720p（768×1024）</option>
+                    <option value="16:9-1080p">16:9 横屏 · 1080p（1920×1080）</option>
+                    <option value="9:16-1080p">9:16 竖屏 · 1080p（1080×1920）</option>
+                    <option value="16:9-480p">16:9 横屏 · 480p（854×480）</option>
+                    <option value="custom">自定义宽高</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="durationPreset">目标时长</label>
+                  <select id="durationPreset">
+                    <option value="81">约 3 秒（81 帧）</option>
+                    <option value="121" selected>约 5 秒（121 帧）</option>
+                    <option value="241">约 10 秒（241 帧）</option>
+                    <option value="441">约 18 秒（441 帧）</option>
+                    <option value="custom">自定义帧数</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="frameRate">帧率 (frame_rate)</label>
+                  <select id="frameRate">
+                    <option value="24" selected>24 fps</option>
+                    <option value="30">30 fps</option>
+                    <option value="60">60 fps</option>
+                    <option value="custom">自定义</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="seed">随机种子 (seed)</label>
+                  <input id="seed" type="number" min="0" placeholder="留空则随机" />
+                </div>
+                <div>
+                  <label for="numInferenceSteps">推理步数 (num_inference_steps)</label>
+                  <input id="numInferenceSteps" type="number" min="1" placeholder="留空使用模型默认" />
+                </div>
+                <div id="customFrameRateWrap" style="display:none;">
+                  <label for="customFrameRate">自定义帧率</label>
+                  <input id="customFrameRate" type="number" min="1" max="60" value="24" />
+                  <div class="hint">支持 1–60</div>
+                </div>
+                <div id="customSizeWrap" style="display:none;">
+                  <label for="customWidth">自定义宽度 (width)</label>
+                  <input id="customWidth" type="number" min="256" value="1152" />
+                </div>
+                <div id="customHeightWrap" style="display:none;">
+                  <label for="customHeight">自定义高度 (height)</label>
+                  <input id="customHeight" type="number" min="256" value="768" />
+                </div>
+                <div id="customFramesWrap" style="display:none;">
+                  <label for="customNumFrames">自定义帧数 (num_frames)</label>
+                  <input id="customNumFrames" type="number" min="9" max="441" step="8" value="121" />
+                  <div class="hint">须 ≤441 且满足 8n+1（如 81、121、241）</div>
+                </div>
+                <div class="full">
+                  <label for="negativePrompt">负向提示词 (negative_prompt)</label>
+                  <textarea id="negativePrompt" style="min-height: 72px;" placeholder="描述需要避免的内容，例如：模糊、畸形、水印、低画质">卡通，Q版，低幼，现代，模糊，畸形，水印文字，杂物，塑料质感，多余人物，杂乱特效</textarea>
+                </div>
+              </div>
+              <div class="hint" id="durationHint" style="margin-top: 8px;">预计时长：约 5.0 秒（121 帧 ÷ 24 fps）</div>
+            </details>
+
+            <div id="modeHint" class="notice">文生视频：直接输入描述后生成即可。</div>
+
+            <label for="keyframeCount">参考图数量（文生图）</label>
+            <select id="keyframeCount">
+              <option value="1">1 张（图生视频）</option>
+              <option value="2">2 张</option>
+              <option value="3" selected>3 张（关键帧动画）</option>
+              <option value="4">4 张</option>
+            </select>
+
+            <label for="imageFiles">上传本地图片（自动转 Base64）</label>
+            <input id="imageFiles" type="file" accept="image/*" multiple />
+            <div class="hint">本地图片会转为 Data URI Base64 传给 Agnes，无需公网地址。</div>
+
+            <label for="publicImageUrl">公网图片 URL（可选）</label>
+            <input id="publicImageUrl" placeholder="已有 COS / 公网图片链接时可粘贴" />
+
+            <label for="apiKey">API Key（可留空使用服务端默认）</label>
+            <input id="apiKey" placeholder="输入你的 Agnes API Key" />
+
+            <div class="row">
+              <button id="optimizeBtn">优化提示词</button>
+              <button id="generateKeyframesBtn" class="secondary">生成参考图</button>
+              <button id="generateBtn">生成视频</button>
+              <button id="animateFromKeyframesBtn" class="secondary">用参考图生成动画</button>
+            </div>
+
+            <div class="progress" id="progressWrap" style="display:none;"><div id="progressBar"></div></div>
+            <div class="status" id="status">准备就绪</div>
+          </div>
+
+          <div class="card">
+            <h3>提示词预览</h3>
+            <div id="optimizedPrompt" class="result-box">等待生成…</div>
+
+            <h3 style="margin-top: 16px;">参考图 / 关键帧</h3>
+            <div id="keyframesBox" class="result-box">
+              <div class="muted">可上传本地图片（Base64）、生成参考图（公网 URL），或粘贴公网链接，再选择用于视频生成。</div>
+            </div>
+
+            <h3 style="margin-top: 16px;">生成结果</h3>
+            <div id="resultBox" class="result-box">暂无结果</div>
+
+            <h3 style="margin-top: 16px;">生成历史</h3>
+            <div id="historyBox" class="result-box">加载中…</div>
+          </div>
+        </div>
+
+        <section class="samples-section" id="samples">
+          <div class="samples-header">
+            <div>
+              <h2>样例效果</h2>
+              <p class="muted" style="margin: 6px 0 0;">内置真实生成样例，页面内直接播放</p>
+            </div>
+          </div>
+          <div id="samplesGrid" class="samples-grid">
+            <div class="muted">样例加载中…</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const statusEl = document.getElementById('status');
+      const optimizeBtn = document.getElementById('optimizeBtn');
+      const generateKeyframesBtn = document.getElementById('generateKeyframesBtn');
+      const generateBtn = document.getElementById('generateBtn');
+      const animateFromKeyframesBtn = document.getElementById('animateFromKeyframesBtn');
+      const promptEl = document.getElementById('prompt');
+      const apiKeyEl = document.getElementById('apiKey');
+      const modeEl = document.getElementById('mode');
+      const modeHintEl = document.getElementById('modeHint');
+      const publicImageUrlEl = document.getElementById('publicImageUrl');
+      const imageFilesEl = document.getElementById('imageFiles');
+      const keyframeCountEl = document.getElementById('keyframeCount');
+      const resolutionPresetEl = document.getElementById('resolutionPreset');
+      const durationPresetEl = document.getElementById('durationPreset');
+      const frameRateEl = document.getElementById('frameRate');
+      const customFrameRateEl = document.getElementById('customFrameRate');
+      const customFrameRateWrapEl = document.getElementById('customFrameRateWrap');
+      const customWidthEl = document.getElementById('customWidth');
+      const customHeightEl = document.getElementById('customHeight');
+      const customNumFramesEl = document.getElementById('customNumFrames');
+      const customSizeWrapEl = document.getElementById('customSizeWrap');
+      const customHeightWrapEl = document.getElementById('customHeightWrap');
+      const customFramesWrapEl = document.getElementById('customFramesWrap');
+      const negativePromptEl = document.getElementById('negativePrompt');
+      const seedEl = document.getElementById('seed');
+      const numInferenceStepsEl = document.getElementById('numInferenceSteps');
+      const durationHintEl = document.getElementById('durationHint');
+      const optimizedPromptEl = document.getElementById('optimizedPrompt');
+      const keyframesBoxEl = document.getElementById('keyframesBox');
+      const resultBoxEl = document.getElementById('resultBox');
+      const historyBoxEl = document.getElementById('historyBox');
+      const progressWrapEl = document.getElementById('progressWrap');
+      const progressBarEl = document.getElementById('progressBar');
+      let optimizedPrompt = '';
+      let generatedKeyframes = [];
+      let uploadedImages = [];
+      let selectedReferenceIndices = new Set();
+      let progressTimer = null;
+
+      const MODE_HINTS = {
+        text: '文生视频：输入描述后直接生成，无需参考图。',
+        image: '图生视频：上传 1 张本地图片（Base64），或生成/选择 1 张参考图，或粘贴公网 URL。',
+        keyframes: '关键帧动画：上传 2 张及以上本地图片，或生成参考图后选择 2 张及以上。',
+      };
+
+      function updateModeHint() {
+        modeHintEl.textContent = MODE_HINTS[modeEl.value] || MODE_HINTS.text;
+        if (modeEl.value === 'image') {
+          keyframeCountEl.value = '1';
+        } else if (modeEl.value === 'keyframes' && Number(keyframeCountEl.value) < 2) {
+          keyframeCountEl.value = '3';
+        }
+      }
+
+      function getPublicImageUrlInput() {
+        return publicImageUrlEl.value.trim();
+      }
+
+      function getReferenceImages() {
+        const uploaded = uploadedImages.map((item, index) => ({
+          id: `upload-${index}`,
+          kind: 'upload',
+          preview: item.preview,
+          source: item.source,
+          label: item.name || `本地上传 ${index + 1}`,
+        }));
+        const generated = generatedKeyframes.map((item, index) => ({
+          id: `gen-${index}`,
+          kind: 'generated',
+          preview: item.url,
+          source: item.url,
+          label: `参考图 ${uploaded.length + index + 1}`,
+        }));
+        return [...uploaded, ...generated];
+      }
+
+      function getSelectedReferenceSources() {
+        return Array.from(selectedReferenceIndices)
+          .sort((a, b) => a - b)
+          .map((index) => getReferenceImages()[index]?.source)
+          .filter(Boolean);
+      }
+
+      function autoSelectReferencesForMode() {
+        const items = getReferenceImages();
+        selectedReferenceIndices.clear();
+        if (!items.length) return;
+        if (modeEl.value === 'image') {
+          selectedReferenceIndices.add(0);
+        } else {
+          items.forEach((_, index) => selectedReferenceIndices.add(index));
+        }
+      }
+
+      function toggleReferenceSelection(index) {
+        if (modeEl.value === 'image') {
+          selectedReferenceIndices.clear();
+          selectedReferenceIndices.add(index);
+        } else if (selectedReferenceIndices.has(index)) {
+          selectedReferenceIndices.delete(index);
+        } else {
+          selectedReferenceIndices.add(index);
+        }
+        renderKeyframes();
+      }
+
+      async function readFileAsDataUri(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve({
+            preview: reader.result,
+            source: reader.result,
+            name: file.name,
+          });
+          reader.onerror = () => reject(new Error(`读取图片失败：${file.name}`));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function handleImageFilesSelected() {
+        const files = Array.from(imageFilesEl.files || []);
+        if (!files.length) {
+          uploadedImages = [];
+          autoSelectReferencesForMode();
+          renderKeyframes();
+          return;
+        }
+        statusEl.textContent = '正在将本地图片转为 Base64…';
+        try {
+          uploadedImages = await Promise.all(files.map(readFileAsDataUri));
+          autoSelectReferencesForMode();
+          renderKeyframes();
+          statusEl.textContent = `已加载 ${uploadedImages.length} 张本地图片（Base64）`;
+        } catch (error) {
+          statusEl.textContent = error.message;
+        }
+      }
+
+      imageFilesEl.addEventListener('change', () => {
+        handleImageFilesSelected();
+      });
+
+      modeEl.addEventListener('change', () => {
+        updateModeHint();
+        autoSelectReferencesForMode();
+        renderKeyframes();
+      });
+      updateModeHint();
+
+      const RESOLUTION_PRESETS = {
+        '16:9-720p': { width: 1152, height: 768 },
+        '9:16-720p': { width: 768, height: 1152 },
+        '1:1-720p': { width: 768, height: 768 },
+        '4:3-720p': { width: 1024, height: 768 },
+        '3:4-720p': { width: 768, height: 1024 },
+        '16:9-1080p': { width: 1920, height: 1080 },
+        '9:16-1080p': { width: 1080, height: 1920 },
+        '16:9-480p': { width: 854, height: 480 },
+      };
+
+      function updateParamVisibility() {
+        const isCustomResolution = resolutionPresetEl.value === 'custom';
+        customSizeWrapEl.style.display = isCustomResolution ? 'block' : 'none';
+        customHeightWrapEl.style.display = isCustomResolution ? 'block' : 'none';
+        customFramesWrapEl.style.display = durationPresetEl.value === 'custom' ? 'block' : 'none';
+        customFrameRateWrapEl.style.display = frameRateEl.value === 'custom' ? 'block' : 'none';
+        updateDurationHint();
+      }
+
+      function getFrameRate() {
+        if (frameRateEl.value === 'custom') {
+          const value = Number(customFrameRateEl.value || 24);
+          return Math.min(60, Math.max(1, value));
+        }
+        return Number(frameRateEl.value || 24);
+      }
+
+      function getNumFrames() {
+        if (durationPresetEl.value === 'custom') {
+          let frames = Number(customNumFramesEl.value || 121);
+          frames = Math.min(441, Math.max(9, frames));
+          const remainder = (frames - 1) % 8;
+          if (remainder !== 0) {
+            frames -= remainder;
+            if (frames < 9) frames = 9;
+          }
+          customNumFramesEl.value = String(frames);
+          return frames;
+        }
+        return Number(durationPresetEl.value || 121);
+      }
+
+      function getResolution() {
+        if (resolutionPresetEl.value === 'custom') {
+          return {
+            width: Number(customWidthEl.value || 1152),
+            height: Number(customHeightEl.value || 768),
+          };
+        }
+        return RESOLUTION_PRESETS[resolutionPresetEl.value] || RESOLUTION_PRESETS['16:9-720p'];
+      }
+
+      function updateDurationHint() {
+        const frames = getNumFrames();
+        const fps = getFrameRate();
+        const seconds = (frames / fps).toFixed(1);
+        durationHintEl.textContent = `预计时长：约 ${seconds} 秒（${frames} 帧 ÷ ${fps} fps）`;
+      }
+
+      function collectVideoParams() {
+        const { width, height } = getResolution();
+        const params = {
+          width,
+          height,
+          num_frames: getNumFrames(),
+          frame_rate: getFrameRate(),
+        };
+        const negativePrompt = negativePromptEl.value.trim();
+        if (negativePrompt) {
+          params.negative_prompt = negativePrompt;
+        }
+        const seedValue = seedEl.value.trim();
+        if (seedValue !== '') {
+          params.seed = Number(seedValue);
+        }
+        const stepsValue = numInferenceStepsEl.value.trim();
+        if (stepsValue !== '') {
+          params.num_inference_steps = Number(stepsValue);
+        }
+        return params;
+      }
+
+      resolutionPresetEl.addEventListener('change', updateParamVisibility);
+      durationPresetEl.addEventListener('change', updateParamVisibility);
+      frameRateEl.addEventListener('change', updateParamVisibility);
+      customNumFramesEl.addEventListener('input', updateDurationHint);
+      customFrameRateEl.addEventListener('input', updateDurationHint);
+      updateParamVisibility();
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function startProgress() {
+        progressWrapEl.style.display = 'block';
+        progressBarEl.style.width = '6%';
+        if (progressTimer) clearInterval(progressTimer);
+        progressTimer = setInterval(() => {
+          const current = parseFloat(progressBarEl.style.width || '0%');
+          const next = Math.min(current + Math.random() * 8 + 4, 92);
+          progressBarEl.style.width = `${next}%`;
+        }, 1000);
+      }
+
+      function stopProgress() {
+        if (progressTimer) clearInterval(progressTimer);
+        progressTimer = null;
+        progressBarEl.style.width = '100%';
+        setTimeout(() => {
+          progressWrapEl.style.display = 'none';
+          progressBarEl.style.width = '0%';
+        }, 500);
+      }
+
+      async function callJson(url, body, options = {}) {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          ...options
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || '请求失败');
+        }
+        return data;
+      }
+
+      async function pollVideoStatus(taskId, videoId) {
+        const queryId = videoId || taskId;
+        const apiKey = apiKeyEl.value.trim();
+        for (let i = 0; i < 90; i += 1) {
+          const params = new URLSearchParams({ task_id: queryId });
+          if (apiKey) params.set('api_key', apiKey);
+          const response = await fetch(`/api/agnes/video/status?${params}`);
+          const data = normalizeVideoData(await response.json().catch(() => ({})));
+          if (data.url) {
+            return data;
+          }
+          if (['failed', 'error', 'cancelled', 'canceled'].includes(data.status)) {
+            return data;
+          }
+          if (data.status === 'completed') {
+            return data;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 6000));
+        }
+        return { status: 'queued', task_id: taskId, video_id: videoId };
+      }
+
+      function normalizeVideoData(data) {
+        if (!data || typeof data !== 'object') return {};
+        const payload = data.payload && typeof data.payload === 'object' ? data.payload : {};
+        return {
+          ...data,
+          url: data.url || payload.url || '',
+          status: data.status || payload.status || '',
+          task_id: data.task_id || data.id || payload.id || payload.task_id || '',
+          video_id: data.video_id || payload.video_id || '',
+          seconds: data.seconds || payload.seconds || '',
+          size: data.size || payload.size || '',
+          local_path: data.local_path || payload.local_path || '',
+          progress: data.progress ?? payload.progress,
+        };
+      }
+
+      function renderVideoResult(data, title = '任务已完成') {
+        const item = normalizeVideoData(data);
+        if (item.url) {
+          return `
+            <div class="pill">${escapeHtml(title)}</div>
+            <div class="small">任务 ID: ${escapeHtml(item.task_id || '—')}</div>
+            ${item.seconds ? `<div class="small">时长：${escapeHtml(String(item.seconds))} 秒${item.size ? ` · ${escapeHtml(item.size)}` : ''}</div>` : ''}
+            <a class="download-link" href="${item.url}" target="_blank" rel="noopener" download>下载视频</a>
+            ${item.local_path ? `<div class="small">已保存到：${escapeHtml(item.local_path)}</div>` : ''}
+            <video controls autoplay loop playsinline preload="metadata">
+              <source src="${item.url}" type="video/mp4" />
+            </video>
+          `;
+        }
+        if (['failed', 'error', 'cancelled', 'canceled'].includes(item.status)) {
+          const err = (data.payload && data.payload.error) || data.error || '视频生成失败';
+          return `<div class="pill" style="background:rgba(239,68,68,.16);color:#fecaca">生成失败</div><div class="small">${escapeHtml(String(err))}</div>`;
+        }
+        if (item.status === 'queued' || item.status === 'in_progress') {
+          const progress = item.progress != null ? ` · 进度 ${item.progress}%` : '';
+          return `<div class="muted">任务处理中${progress}，请稍候…</div>`;
+        }
+        return `<pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+      }
+
+      async function waitForVideoResult(data) {
+        let result = normalizeVideoData(data);
+        const terminal = ['failed', 'error', 'cancelled', 'canceled'];
+        if (!result.url && result.task_id && !terminal.includes(result.status)) {
+          statusEl.textContent = '任务已提交，正在等待 Agnes 生成完成…';
+          result = normalizeVideoData(await pollVideoStatus(result.task_id, result.video_id));
+        }
+        return result;
+      }
+
+      function renderKeyframes() {
+        const items = getReferenceImages();
+        if (!items.length) {
+          keyframesBoxEl.innerHTML = '<div class="muted">可上传本地图片（Base64）、生成参考图（公网 URL），或粘贴公网链接，再选择用于视频生成。</div>';
+          return;
+        }
+        const selectedCount = selectedReferenceIndices.size;
+        const needText = modeEl.value === 'image'
+          ? '图生视频需选择 1 张'
+          : '关键帧动画需选择至少 2 张';
+        keyframesBoxEl.innerHTML = `
+          <div class="hint">${needText}。点击图片可切换选中状态。</div>
+          <div class="thumbs">
+            ${items.map((item, index) => `
+              <img
+                src="${item.preview}"
+                alt="${escapeHtml(item.label)}"
+                class="${selectedReferenceIndices.has(index) ? 'selected' : ''}"
+                data-index="${index}"
+                title="${escapeHtml(item.label)}${item.kind === 'upload' ? ' · Base64' : ' · URL'}"
+              />
+            `).join('')}
+          </div>
+          <div class="small">共 ${items.length} 张（本地上传 ${uploadedImages.length} · 文生图 ${generatedKeyframes.length}）· 已选 ${selectedCount} 张</div>
+        `;
+        keyframesBoxEl.querySelectorAll('img[data-index]').forEach((img) => {
+          img.addEventListener('click', () => toggleReferenceSelection(Number(img.dataset.index)));
+        });
+      }
+
+      async function ensureReferenceImages() {
+        const prompt = optimizedPrompt || promptEl.value.trim();
+        if (!prompt) {
+          throw new Error('请先输入或优化提示词');
+        }
+        const desiredCount = modeEl.value === 'image'
+          ? 1
+          : Math.max(2, Number(keyframeCountEl.value || 3));
+        if (generatedKeyframes.length >= desiredCount) {
+          return generatedKeyframes;
+        }
+        statusEl.textContent = '正在生成参考图（公网 URL）…';
+        const data = await callJson('/api/agnes/keyframes', {
+          prompt,
+          api_key: apiKeyEl.value.trim(),
+          count: desiredCount,
+        });
+        generatedKeyframes = data.items || [];
+        autoSelectReferencesForMode();
+        renderKeyframes();
+        if (!generatedKeyframes.length) {
+          throw new Error('参考图生成失败，请重试');
+        }
+        return generatedKeyframes;
+      }
+
+      function resolveImageInputs(selectedMode) {
+        const publicUrl = getPublicImageUrlInput();
+        const selectedSources = getSelectedReferenceSources();
+
+        if (selectedMode === 'text') {
+          return { image: '', keyframes: [] };
+        }
+
+        if (selectedMode === 'image') {
+          if (publicUrl) {
+            return { image: publicUrl, keyframes: [] };
+          }
+          if (selectedSources.length < 1) {
+            throw new Error('图生视频需要 1 张参考图：请上传本地图片、生成参考图并选中 1 张，或粘贴公网 URL');
+          }
+          return { image: selectedSources[0], keyframes: [] };
+        }
+
+        if (publicUrl) {
+          throw new Error('关键帧动画请上传多张本地图片或生成参考图；单张公网 URL 请切换到图生视频模式');
+        }
+        if (selectedSources.length < 2) {
+          throw new Error('关键帧动画需要至少 2 张参考图：请上传 2 张及以上本地图片，或生成参考图后选中 2 张及以上');
+        }
+        return { image: '', keyframes: selectedSources };
+      }
+
+      async function renderSamples() {
+        const gridEl = document.getElementById('samplesGrid');
+        try {
+          const data = await fetch('/api/samples').then((r) => r.json());
+          const items = data.items || [];
+          if (!items.length) {
+            gridEl.innerHTML = '<div class="muted">暂无样例视频，请先将 mp4 放入 outputs/videos/ 目录</div>';
+            return;
+          }
+          gridEl.innerHTML = items.map((item) => `
+            <article class="sample-card">
+              <span class="pill">${escapeHtml(item.mode)}</span>
+              <span class="small">${escapeHtml(item.duration || '')}</span>
+              <h4>${escapeHtml(item.title)}</h4>
+              <div class="small">${escapeHtml(item.description || '')}</div>
+              <div class="small">${escapeHtml(item.meta || '')}</div>
+              <video controls playsinline preload="metadata" poster="">
+                <source src="${item.url}" type="video/mp4" />
+              </video>
+            </article>
+          `).join('');
+        } catch (error) {
+          gridEl.innerHTML = '<div class="muted">样例加载失败</div>';
+        }
+      }
+
+      async function refreshHistory() {
+        try {
+          const data = await fetch('/api/agnes/history').then((r) => r.json());
+          const items = data.items || [];
+          if (!items.length) {
+            historyBoxEl.innerHTML = '暂无历史';
+            return;
+          }
+          historyBoxEl.innerHTML = items.map((item) => `
+            <div class="history-item">
+              <div class="pill">${escapeHtml(item.mode || 'text')}</div>
+              <div class="small">${escapeHtml(item.prompt || '')}</div>
+              <div class="small">状态：${escapeHtml(item.status || 'queued')} · ${new Date(item.created_at * 1000).toLocaleString()}</div>
+              ${item.url ? `<a class="download-link" href="${item.url}" target="_blank" rel="noopener">查看视频</a>` : ''}
+              ${item.local_path ? `<div class="small">已保存到：${escapeHtml(item.local_path)}</div>` : ''}
+            </div>
+          `).join('');
+        } catch (error) {
+          historyBoxEl.innerHTML = '历史加载失败';
+        }
+      }
+
+      optimizeBtn.addEventListener('click', async () => {
+        const prompt = promptEl.value.trim();
+        if (!prompt) {
+          statusEl.textContent = '请输入视频描述';
+          return;
+        }
+        optimizeBtn.disabled = true;
+        statusEl.textContent = '正在优化提示词…';
+        try {
+          const data = await callJson('/api/agnes/text', { prompt, api_key: apiKeyEl.value.trim() });
+          optimizedPrompt = data.content || '';
+          optimizedPromptEl.innerHTML = `<div class="pill">已优化</div><div>${escapeHtml(optimizedPrompt).replace(/\n/g, '<br>')}</div>`;
+          statusEl.textContent = '提示词优化完成';
+        } catch (error) {
+          statusEl.textContent = error.message;
+        } finally {
+          optimizeBtn.disabled = false;
+        }
+      });
+
+      generateKeyframesBtn.addEventListener('click', async () => {
+        const prompt = optimizedPrompt || promptEl.value.trim();
+        if (!prompt) {
+          statusEl.textContent = '请先输入或优化提示词';
+          return;
+        }
+        generateKeyframesBtn.disabled = true;
+        startProgress();
+        statusEl.textContent = '正在生成参考图（公网 URL）…';
+        try {
+          const count = Number(keyframeCountEl.value || (modeEl.value === 'image' ? 1 : 3));
+          const data = await callJson('/api/agnes/keyframes', {
+            prompt,
+            api_key: apiKeyEl.value.trim(),
+            count,
+          });
+          generatedKeyframes = data.items || [];
+          autoSelectReferencesForMode();
+          renderKeyframes();
+          statusEl.textContent = `已生成 ${generatedKeyframes.length} 张参考图，可直接用于视频生成`;
+        } catch (error) {
+          statusEl.textContent = error.message;
+        } finally {
+          stopProgress();
+          generateKeyframesBtn.disabled = false;
+        }
+      });
+
+      generateBtn.addEventListener('click', async () => {
+        const prompt = optimizedPrompt || promptEl.value.trim();
+        if (!prompt) {
+          statusEl.textContent = '请先输入或优化提示词';
+          return;
+        }
+        const selectedMode = modeEl.value;
+
+        generateBtn.disabled = true;
+        startProgress();
+        statusEl.textContent = '正在提交视频生成任务…';
+        resultBoxEl.innerHTML = '正在生成，请稍候…';
+
+        try {
+          if (selectedMode !== 'text' && !getPublicImageUrlInput() && getSelectedReferenceSources().length === 0) {
+            if (uploadedImages.length === 0) {
+              await ensureReferenceImages();
+            } else {
+              autoSelectReferencesForMode();
+            }
+          }
+
+          const { image: imageUrl, keyframes } = resolveImageInputs(selectedMode);
+
+          const payload = {
+            prompt,
+            api_key: apiKeyEl.value.trim(),
+            mode: selectedMode,
+            image: imageUrl,
+            keyframes,
+            ...collectVideoParams(),
+          };
+          let data = normalizeVideoData(await callJson('/api/agnes/video', payload));
+          data = await waitForVideoResult(data);
+
+          if (data.url) {
+            resultBoxEl.innerHTML = renderVideoResult(data, '任务已完成');
+            statusEl.textContent = '视频生成完成';
+          } else {
+            resultBoxEl.innerHTML = renderVideoResult(data, '处理中');
+            statusEl.textContent = data.status === 'queued' || data.status === 'in_progress'
+              ? '任务处理中，请稍后刷新历史记录查看'
+              : '任务已提交，稍后查看结果';
+          }
+        } catch (error) {
+          resultBoxEl.innerHTML = `<div>${escapeHtml(error.message)}</div>`;
+          statusEl.textContent = error.message;
+        } finally {
+          stopProgress();
+          generateBtn.disabled = false;
+          refreshHistory();
+        }
+      });
+
+      animateFromKeyframesBtn.addEventListener('click', async () => {
+        if (!getReferenceImages().length) {
+          statusEl.textContent = '请先上传本地图片或生成参考图';
+          return;
+        }
+        if (getSelectedReferenceSources().length < 2) {
+          statusEl.textContent = '关键帧动画请至少选择 2 张参考图';
+          return;
+        }
+        animateFromKeyframesBtn.disabled = true;
+        startProgress();
+        statusEl.textContent = '正在用当前关键帧生成动画…';
+        resultBoxEl.innerHTML = '正在使用关键帧生成动画，请稍候…';
+        try {
+          const payload = {
+            prompt: optimizedPrompt || promptEl.value.trim(),
+            api_key: apiKeyEl.value.trim(),
+            mode: 'keyframes',
+            keyframes: getSelectedReferenceSources(),
+            ...collectVideoParams(),
+          };
+          let data = normalizeVideoData(await callJson('/api/agnes/video', payload));
+          data = await waitForVideoResult(data);
+          if (data.url) {
+            resultBoxEl.innerHTML = renderVideoResult(data, '动画已完成');
+            statusEl.textContent = '关键帧动画生成完成';
+          } else {
+            resultBoxEl.innerHTML = renderVideoResult(data, '处理中');
+            statusEl.textContent = data.status === 'queued' || data.status === 'in_progress'
+              ? '动画任务处理中，请稍后查看'
+              : '任务已提交，稍后查看结果';
+          }
+        } catch (error) {
+          resultBoxEl.innerHTML = `<div>${escapeHtml(error.message)}</div>`;
+          statusEl.textContent = error.message;
+        } finally {
+          stopProgress();
+          animateFromKeyframesBtn.disabled = false;
+          refreshHistory();
+        }
+      });
+
+      refreshHistory();
+      renderKeyframes();
+      renderSamples();
+    </script>
+  </body>
+</html>

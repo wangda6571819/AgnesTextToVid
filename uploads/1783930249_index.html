@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agnes 视频生成小工具</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07111f;
+        --panel: rgba(15, 23, 42, 0.9);
+        --border: rgba(148, 163, 184, 0.25);
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
+        --accent-2: #818cf8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top, #14213d 0%, var(--bg) 60%);
+        color: var(--text);
+        min-height: 100vh;
+      }
+      .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+      .hero { padding: 28px; border: 1px solid var(--border); background: var(--panel); border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+      h1 { margin: 0 0 8px; font-size: 32px; }
+      p { color: var(--muted); line-height: 1.6; }
+      .grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; margin-top: 20px; }
+      .card { background: rgba(2,8,23,.7); border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+      label { display: inline-block; margin-top: 10px; margin-bottom: 6px; font-weight: 600; }
+      textarea, input, select { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: rgba(15,23,42,.88); color: var(--text); font-size: 14px; margin-top: 6px; }
+      textarea { min-height: 120px; resize: vertical; }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+      button { padding: 10px 14px; border: none; border-radius: 999px; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%); color: white; cursor: pointer; font-weight: 600; }
+      button:disabled { opacity: .7; cursor: wait; }
+      .status { margin-top: 12px; color: var(--muted); min-height: 24px; }
+      .result-box { margin-top: 14px; padding: 12px; border-radius: 12px; background: rgba(15,23,42,.9); border: 1px solid var(--border); }
+      .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: rgba(56,189,248,.16); color: #bae6fd; margin-right: 8px; margin-bottom: 8px; font-size: 12px; }
+      .progress { height: 10px; background: rgba(148,163,184,.2); border-radius: 999px; overflow: hidden; margin-top: 10px; }
+      .progress > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .3s ease; }
+      video { width: 100%; border-radius: 12px; margin-top: 10px; background: #000; }
+      .small { font-size: 12px; color: var(--muted); }
+      .history-item { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
+      .history-item:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+      .download-link { display: inline-block; margin-top: 8px; color: #bae6fd; text-decoration: none; }
+      .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+      .thumbs img { width: 70px; height: 70px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+      @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="hero">
+        <h1>Agnes 视频生成小工具</h1>
+        <p>输入文本描述，支持纯文本生成、上传图片做 image-to-video，以及先上传多张关键帧再生成动画。</p>
+        <div class="grid">
+          <div class="card">
+            <label for="prompt">视频描述</label>
+            <textarea id="prompt" placeholder="例如：一只橙色的猫在海边奔跑，夕阳下的浪花，电影感，镜头缓慢推进"></textarea>
+
+            <label for="mode">生成模式</label>
+            <select id="mode">
+              <option value="text">文本生成</option>
+              <option value="image">图片转视频</option>
+              <option value="keyframes">关键帧生成动画</option>
+            </select>
+
+            <label for="imageFiles">上传图片（图片转视频/关键帧）</label>
+            <input id="imageFiles" type="file" accept="image/*" multiple />
+
+            <label for="apiKey">API Key（可留空使用服务端默认）</label>
+            <input id="apiKey" placeholder="输入你的 Agnes API Key" />
+
+            <div class="row">
+              <button id="optimizeBtn">优化提示词</button>
+              <button id="generateBtn">生成视频</button>
+            </div>
+
+            <div class="progress" id="progressWrap" style="display:none;"><div id="progressBar"></div></div>
+            <div class="status" id="status">准备就绪</div>
+          </div>
+
+          <div class="card">
+            <h3>提示词预览</h3>
+            <div id="optimizedPrompt" class="result-box">等待生成…</div>
+            <h3 style="margin-top: 14px;">生成结果</h3>
+            <div id="resultBox" class="result-box">暂无结果</div>
+            <h3 style="margin-top: 14px;">生成历史</h3>
+            <div id="historyBox" class="result-box">加载中…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const statusEl = document.getElementById('status');
+      const optimizeBtn = document.getElementById('optimizeBtn');
+      const generateBtn = document.getElementById('generateBtn');
+      const promptEl = document.getElementById('prompt');
+      const apiKeyEl = document.getElementById('apiKey');
+      const modeEl = document.getElementById('mode');
+      const imageFilesEl = document.getElementById('imageFiles');
+      const optimizedPromptEl = document.getElementById('optimizedPrompt');
+      const resultBoxEl = document.getElementById('resultBox');
+      const historyBoxEl = document.getElementById('historyBox');
+      const progressWrapEl = document.getElementById('progressWrap');
+      const progressBarEl = document.getElementById('progressBar');
+      let optimizedPrompt = '';
+      let progressTimer = null;
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function startProgress() {
+        progressWrapEl.style.display = 'block';
+        progressBarEl.style.width = '5%';
+        if (progressTimer) clearInterval(progressTimer);
+        progressTimer = setInterval(() => {
+          const current = parseFloat(progressBarEl.style.width || '0%');
+          const next = Math.min(current + Math.random() * 8 + 4, 92);
+          progressBarEl.style.width = `${next}%`;
+        }, 1000);
+      }
+
+      function stopProgress() {
+        if (progressTimer) clearInterval(progressTimer);
+        progressTimer = null;
+        progressBarEl.style.width = '100%';
+        setTimeout(() => {
+          progressWrapEl.style.display = 'none';
+          progressBarEl.style.width = '0%';
+        }, 500);
+      }
+
+      async function callJson(url, body, options = {}) {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          ...options
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || '请求失败');
+        }
+        return data;
+      }
+
+      async function uploadImages(files) {
+        const urls = [];
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append('file', file);
+          const response = await fetch('/api/upload/image', { method: 'POST', body: formData });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || '图片上传失败');
+          urls.push(data.url);
+        }
+        return urls;
+      }
+
+      async function refreshHistory() {
+        try {
+          const data = await fetch('/api/agnes/history').then((r) => r.json());
+          const items = data.items || [];
+          if (!items.length) {
+            historyBoxEl.innerHTML = '暂无历史';
+            return;
+          }
+          historyBoxEl.innerHTML = items.map((item) => `
+            <div class="history-item">
+              <div class="pill">${escapeHtml(item.mode || 'text')}</div>
+              <div class="small">${escapeHtml(item.prompt || '')}</div>
+              <div class="small">状态：${escapeHtml(item.status || 'queued')} · ${new Date(item.created_at * 1000).toLocaleString()}</div>
+              ${item.url ? `<a class="download-link" href="${item.url}" target="_blank" rel="noopener">查看视频</a>` : ''}
+            </div>
+          `).join('');
+        } catch (error) {
+          historyBoxEl.innerHTML = '历史加载失败';
+        }
+      }
+
+      optimizeBtn.addEventListener('click', async () => {
+        const prompt = promptEl.value.trim();
+        if (!prompt) {
+          statusEl.textContent = '请输入视频描述';
+          return;
+        }
+        optimizeBtn.disabled = true;
+        statusEl.textContent = '正在优化提示词…';
+        try {
+          const data = await callJson('/api/agnes/text', { prompt, api_key: apiKeyEl.value.trim() });
+          optimizedPrompt = data.content || '';
+          optimizedPromptEl.innerHTML = `<div class="pill">已优化</div><div>${escapeHtml(optimizedPrompt).replace(/\n/g, '<br>')}</div>`;
+          statusEl.textContent = '提示词优化完成';
+        } catch (error) {
+          statusEl.textContent = error.message;
+        } finally {
+          optimizeBtn.disabled = false;
+        }
+      });
+
+      generateBtn.addEventListener('click', async () => {
+        const prompt = optimizedPrompt || promptEl.value.trim();
+        if (!prompt) {
+          statusEl.textContent = '请先输入或优化提示词';
+          return;
+        }
+        const selectedMode = modeEl.value;
+        const files = Array.from(imageFilesEl.files || []);
+        if (selectedMode === 'keyframes' && files.length < 2) {
+          statusEl.textContent = '关键帧动画需要至少上传 2 张图片';
+          return;
+        }
+        if (selectedMode === 'image' && files.length < 1) {
+          statusEl.textContent = '图片转视频请先上传 1 张图片';
+          return;
+        }
+
+        generateBtn.disabled = true;
+        startProgress();
+        statusEl.textContent = '正在提交视频生成任务…';
+        resultBoxEl.innerHTML = '正在生成，请稍候…';
+
+        try {
+          let imageUrl = '';
+          let keyframes = [];
+          if (files.length) {
+            const uploadedUrls = await uploadImages(files);
+            if (selectedMode === 'image') {
+              imageUrl = uploadedUrls[0];
+            } else if (selectedMode === 'keyframes') {
+              keyframes = uploadedUrls;
+            }
+          }
+
+          const payload = {
+            prompt,
+            api_key: apiKeyEl.value.trim(),
+            mode: selectedMode,
+            image: imageUrl,
+            keyframes,
+          };
+          const data = await callJson('/api/agnes/video', payload);
+
+          if (data.url) {
+            resultBoxEl.innerHTML = `
+              <div class="pill">任务已完成</div>
+              <div class="small">任务 ID: ${escapeHtml(data.task_id || '—')}</div>
+              <a class="download-link" href="${data.url}" target="_blank" rel="noopener" download>下载视频</a>
+              <video controls autoplay loop playsinline>
+                <source src="${data.url}" type="video/mp4" />
+              </video>
+            `;
+            statusEl.textContent = '视频生成完成';
+          } else {
+            resultBoxEl.innerHTML = `<pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+            statusEl.textContent = '任务已提交，稍后查看结果';
+          }
+        } catch (error) {
+          resultBoxEl.innerHTML = `<div>${escapeHtml(error.message)}</div>`;
+          statusEl.textContent = error.message;
+        } finally {
+          stopProgress();
+          generateBtn.disabled = false;
+          refreshHistory();
+        }
+      });
+
+      refreshHistory();
+    </script>
+  </body>
+</html>
