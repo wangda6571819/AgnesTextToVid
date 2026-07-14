@@ -2,6 +2,8 @@
 
 Agnes Studio 是一个本地运行的 AI 视频创作工作流工具。它将提示词优化、文生图、视频生成、关键帧动画和本地结果保存串成一条完整流程，在浏览器中完成从文本 / 图片到短视频的创作。
 
+![Agnes Studio 界面预览](docs/previews/sample.jpg)
+
 官网与 API 平台：
 
 - [Agnes AI 官网](https://agnes-ai.com/)（**免费注册**即可获取 API Key）
@@ -401,7 +403,7 @@ Agnes 会将 `width` / `height` 自动映射到最近的标准档位（480p / 72
 ├── index.html                  # 前端界面
 ├── server.py                   # Flask 后端与 Agnes API 代理
 ├── docs/
-│   └── previews/               # README 样例 WebP 动图预览
+│   └── previews/               # README 界面截图与样例 WebP 动图预览
 ├── uploads/                    # 上传图片缓存
 ├── outputs/
 │   ├── images/                 # 本地保存的生成图片
