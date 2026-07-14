@@ -27,7 +27,7 @@ Agnes Studio 是一个本地运行的 AI 视频创作工作流工具。它将提
 | 本地图片 Base64 | — | 本地上传自动转 Data URI，无需公网图床 |
 | 异步任务轮询 | — | 优先使用 `video_id` 查询，自动等待并本地保存 |
 | 参数可视化 | — | 分辨率、时长、帧率、seed、负向提示词等可在页面调整 |
-| 样例内嵌播放 | — | 启动服务后页面底部「样例效果」直接播放，无需手动打开文件 |
+| 样例内嵌播放 | — | 启动服务后页面底部「样例效果」直接播放；README 内嵌 WebP 动图预览 |
 
 ---
 
@@ -80,11 +80,13 @@ export PORT=5000                                       # 可选
 
 启动 `python3 server.py` 后，在页面 **[样例效果](http://127.0.0.1:5000/#samples)** 区域可直接播放，无需点击文件链接。
 
-下方为各样例的参数备注（也可在 `outputs/videos/` 目录查看源文件）：
+下方为各样例的 **WebP 动图预览**（GitHub 页面可直接播放）及参数备注；完整 MP4 源文件见 `outputs/videos/`。
 
 ### 样例 1：文生视频（长视频 · 18 秒）
 
-**文件：** [video_task_7e0BkgnZTNAQ7jQcJUYcAvjaECHHXARs.mp4](outputs/videos/video_task_7e0BkgnZTNAQ7jQcJUYcAvjaECHHXARs.mp4)
+![样例 1：文生视频 18 秒](docs/previews/sample-1-text-18s.webp)
+
+**源视频：** [video_task_7e0BkgnZTNAQ7jQcJUYcAvjaECHHXARs.mp4](outputs/videos/video_task_7e0BkgnZTNAQ7jQcJUYcAvjaECHHXARs.mp4)
 
 | 项目 | 参数 |
 | --- | --- |
@@ -105,7 +107,9 @@ export PORT=5000                                       # 可选
 
 ### 样例 2：文生视频（标准 · 约 5 秒）
 
-**文件：** [video_task_Q1HffJJB6mEyAykBxCqxCfu4el0zZJ4F_1783932308.mp4](outputs/videos/video_task_Q1HffJJB6mEyAykBxCqxCfu4el0zZJ4F_1783932308.mp4)
+![样例 2：文生视频 5 秒](docs/previews/sample-2-text-5s.webp)
+
+**源视频：** [video_task_Q1HffJJB6mEyAykBxCqxCfu4el0zZJ4F_1783932308.mp4](outputs/videos/video_task_Q1HffJJB6mEyAykBxCqxCfu4el0zZJ4F_1783932308.mp4)
 
 | 项目 | 参数 |
 | --- | --- |
@@ -122,7 +126,9 @@ export PORT=5000                                       # 可选
 
 ### 样例 3：关键帧动画（本地上传 Base64 · 约 5 秒）
 
-**文件：** [video_task_Ro0HKUqg57ttpltA0z1iE4yAv4wiLMbw_1783935044.mp4](outputs/videos/video_task_Ro0HKUqg57ttpltA0z1iE4yAv4wiLMbw_1783935044.mp4)
+![样例 3：关键帧动画 5 秒](docs/previews/sample-3-keyframes-5s.webp)
+
+**源视频：** [video_task_Ro0HKUqg57ttpltA0z1iE4yAv4wiLMbw_1783935044.mp4](outputs/videos/video_task_Ro0HKUqg57ttpltA0z1iE4yAv4wiLMbw_1783935044.mp4)
 
 | 项目 | 参数 |
 | --- | --- |
@@ -394,10 +400,12 @@ Agnes 会将 `width` / `height` 自动映射到最近的标准档位（480p / 72
 .
 ├── index.html                  # 前端界面
 ├── server.py                   # Flask 后端与 Agnes API 代理
+├── docs/
+│   └── previews/               # README 样例 WebP 动图预览
 ├── uploads/                    # 上传图片缓存
 ├── outputs/
 │   ├── images/                 # 本地保存的生成图片
-│   └── videos/                 # 本地保存的视频
+│   └── videos/                 # 本地保存的视频（完整 MP4 源文件）
 ├── tests/                      # 回归测试
 └── README.md                   # 项目说明
 ```
